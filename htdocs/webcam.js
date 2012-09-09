@@ -1,4 +1,3 @@
-/* JPEGCam v1.0.9 */
 /* Webcam library for capturing JPEG images and submitting to a server */
 /* Copyright (c) 2008 - 2009 Joseph Huckaby <jhuckaby@goldcartridge.com> */
 /* Licensed under the GNU Lesser Public License */
@@ -18,7 +17,7 @@
 
 // Everything is under a 'webcam' Namespace
 window.webcam = {
-	version: '1.0.9',	
+	version: '1.0.10',
 	// globals
 	ie: !!navigator.userAgent.match(/MSIE/),
 	protocol: location.protocol.match(/https/i) ? 'https' : 'http',
@@ -32,6 +31,7 @@ window.webcam = {
 	stealth: false, // stealth mode (do not freeze image upon capture)
 	hooks: {
 		onLoad: null,
+		onAllow: null,
 		onComplete: null,
 		onError: null
 	}, // callback hook functions
@@ -199,6 +199,12 @@ window.webcam = {
 	flash_notify: function(type, msg) {
 		// receive notification from flash about event
 		switch (type) {
+			case 'security':
+				// movie loaded successfully
+				var permission = (msg == "Camera.Unmuted");
+				this.fire_hook('onAllow', permission);
+				break;
+
 			case 'flashLoadComplete':
 				// movie loaded successfully
 				this.loaded = true;

@@ -1,5 +1,4 @@
 package {
-  /* JPEGCam v1.0.9 */
   /* Webcam library for capturing JPEG images and submitting to a server */
   /* Copyright (c) 2008 - 2009 Joseph Huckaby <jhuckaby@goldcartridge.com> */
   /* Licensed under the GNU Lesser Public License */
@@ -74,6 +73,7 @@ package {
 
       if (camera != null) {
         camera.addEventListener(ActivityEvent.ACTIVITY, activityHandler);
+        camera.addEventListener(StatusEvent.STATUS, statusHandler);
         video = new Video(
           Math.max(video_width, server_width),
           Math.max(video_height, server_height));
@@ -231,6 +231,14 @@ package {
         msg = evt.target.data;
       }
       ExternalInterface.call('webcam.flash_notify', "success", msg);
+    }
+
+    public function statusHandler(evt:StatusEvent):void {
+      var msg = "unknown";
+      if (evt && evt.code) {
+        msg = evt.code;
+      }
+      ExternalInterface.call('webcam.flash_notify', "security", msg);
     }
 
     public function reset() {
