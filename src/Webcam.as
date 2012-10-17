@@ -167,8 +167,6 @@ package {
         bmp = new Bitmap(bmpdata);
         addChild(bmp);
 
-        // stop capturing video
-        video.attachCamera(null);
         removeChild(video);
       }
 
@@ -253,7 +251,6 @@ package {
         bmp = null;
         bmpdata = null;
 
-        video.attachCamera(camera);
         addChild(video);
       }
     }
