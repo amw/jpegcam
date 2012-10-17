@@ -146,16 +146,21 @@ Everything is under a top-level global 'webcam' namespace.
 	
 	These values cannot be changed after get_html() is called (see below).
 	
-*webcam.get_html( WIDTH, HEIGHT, [SERVER_WIDTH, SERVER_HEIGHT] );*
+*webcam.get_html(WIDTH, HEIGHT, [SERVER_WIDTH, SERVER_HEIGHT, [SERVER_FLIP]]);*
 
 	This returns the necessary HTML code to embed the Flash movie into your
 	page.  Pass in the desired pixel width & height, which not only controls
 	the visual size of the movie, but also the JPEG image width & height.
 	Standard sizes are 320x240 and 640x480.
 	
-	You can optionally pass a desired server image width and height.  If 
-	these differ from the video width and height, the captured images will 
-	be resized to match just prior to upload.
+	You can optionally pass a desired server image width and height. If
+	these differ from the video width and height, the camera will capture
+	the larger of the two sizes and the image will be scaled down before
+	displaying on the screen or uploading to the server.
+	
+	The last argument allows you to select whether you would like to upload
+	mirrored image like it is displayed on the screen or in real world
+	orientation as seen by the web camera.
 
 *webcam.snap();*
 

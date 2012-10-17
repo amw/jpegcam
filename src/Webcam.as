@@ -25,7 +25,6 @@ package {
 
   public class Webcam extends Sprite {
     private var video:Video;
-    private var encoder:JPGEncoder;
     private var snd:Sound;
     private var channel:SoundChannel = new SoundChannel();
     private var jpeg_quality:int;
@@ -33,9 +32,12 @@ package {
     private var video_height:int;
     private var server_width:int;
     private var server_height:int;
+    private var server_flip:Boolean;
+    private var resize_needed:Boolean;
     private var camera:Camera;
-    private var bmp:Bitmap;
-    private var bmpdata:BitmapData;
+    private var capture_data:BitmapData;
+    private var display_data:BitmapData;
+    private var display_bmp:Bitmap;
     private var url:String;
     private var stealth:int;
 
@@ -47,12 +49,14 @@ package {
       video_height = Math.floor(flashvars.height);
       server_width = Math.floor(flashvars.server_width);
       server_height = Math.floor(flashvars.server_height);
+      server_flip = 1 == flashvars.server_flip
+      resize_needed =
+        video_width != server_width || video_height != server_height
 
       stage.scaleMode = StageScaleMode.NO_SCALE;
-      // stage.scaleMode = StageScaleMode.EXACT_FIT;
       stage.align = StageAlign.TOP_LEFT;
-      stage.stageWidth = Math.max(video_width, server_width);
-      stage.stageHeight = Math.max(video_height, server_height);
+      stage.stageWidth = video_width;
+      stage.stageHeight = video_height;
 
       // Hack to auto-select iSight camera on Mac
       // (JPEGCam Issue #5, submitted by manuel.gonzalez.noriega)
@@ -111,6 +115,12 @@ package {
 
         jpeg_quality = 90;
 
+        capture_data = new BitmapData(
+          Math.max(video_width, server_width),
+          Math.max(video_height, server_height));
+        display_data = new BitmapData(video_width, video_height);
+        display_bmp = new Bitmap(display_data);
+
         ExternalInterface.call(
           'webcam.flash_notify', 'flashLoadComplete', !camera.muted);
       }
@@ -156,17 +166,18 @@ package {
 
     public function snap2(url) {
       // take snapshot, convert to jpeg, submit to server
-      bmpdata = new BitmapData(
-        Math.max(video_width, server_width),
-        Math.max(video_height, server_height));
-      var matrix:Matrix = new Matrix(-1, 0, 0, 1, bmpdata.width, 0);
-      bmpdata.draw(video, matrix, null, null, null, true);
+      capture_data.draw(video, null, null, null, null, false);
 
       if (!stealth) {
-        // draw snapshot on stage
-        bmp = new Bitmap(bmpdata);
-        addChild(bmp);
+        var matrix:Matrix = new Matrix(-1, 0, 0, 1, capture_data.width, 0);
+        if (resize_needed) {
+          matrix.scale(
+            video_width / capture_data.width,
+            video_height / capture_data.height);
+        }
+        display_data.draw(capture_data, matrix, null, null, null, true);
 
+        addChild(display_bmp);
         removeChild(video);
       }
 
@@ -177,26 +188,37 @@ package {
     }
 
     public function upload(url) {
-      if (bmpdata) {
-        if ((video_width > server_width) && (video_height > server_height)) {
-          // resize image downward before submitting
-          var tmpdata = new BitmapData(server_width, server_height);
-
-          var matrix = new Matrix();
-          matrix.scale(server_width/video_width, server_height/video_height);
-
-          tmpdata.draw(bmpdata, matrix, null, null, null, true); // smoothing
-          bmpdata = tmpdata;
-        } // need resize
-
-        trace("converting to jpeg");
-
+      if (capture_data) {
+        var encoder:JPGEncoder = new JPGEncoder(jpeg_quality);
         var ba:ByteArray;
 
-        encoder = new JPGEncoder(jpeg_quality);
-        ba = encoder.encode(bmpdata);
+        if (!resize_needed) {
+          if (server_flip) {
+            ba = encoder.encode(display_data);
+          }
+          else {
+            ba = encoder.encode(capture_data);
+          }
+        }
+        else {
+          var matrix:Matrix = new Matrix();
 
-        trace("jpeg length: " + ba.length);
+          if (server_flip) {
+            matrix.scale(-1, 1);
+            matrix.translate(server_width, 0);
+          }
+          if (resize_needed) {
+            matrix.scale(
+              server_width / capture_data.width,
+              server_height / capture_data.height);
+          }
+
+          var server_data:BitmapData;
+          server_data = new BitmapData(server_width, server_height);
+          server_data.draw(capture_data, matrix, null, null, null, true);
+
+          ba = encoder.encode(server_data);
+        }
 
         var head:URLRequestHeader = new URLRequestHeader("Accept","text/*");
         var req:URLRequest = new URLRequest(url);
@@ -245,11 +267,8 @@ package {
     }
 
     public function reset() {
-      // reset video after taking snapshot
-      if (bmp) {
-        removeChild(bmp);
-        bmp = null;
-        bmpdata = null;
+      if (contains(display_bmp)) {
+        removeChild(display_bmp);
 
         addChild(video);
       }
