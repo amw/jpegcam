@@ -85,6 +85,10 @@ package {
           video.scaleY = video_height / server_height;
         }
 
+        //flip video
+        video.scaleX *= -1;
+        video.x = video.width;
+
         camera.setQuality(0, 100);
         camera.setKeyFrameInterval(10);
         camera.setMode(
@@ -108,7 +112,7 @@ package {
         jpeg_quality = 90;
 
         ExternalInterface.call(
-          'webcam.flash_notify', 'flashLoadComplete', true);
+          'webcam.flash_notify', 'flashLoadComplete', !camera.muted);
       }
       else {
         trace("You need a camera.");
@@ -155,7 +159,8 @@ package {
       bmpdata = new BitmapData(
         Math.max(video_width, server_width),
         Math.max(video_height, server_height));
-      bmpdata.draw(video);
+      var matrix:Matrix = new Matrix(-1, 0, 0, 1, bmpdata.width, 0);
+      bmpdata.draw(video, matrix, null, null, null, true);
 
       if (!stealth) {
         // draw snapshot on stage
