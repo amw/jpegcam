@@ -39,7 +39,7 @@ package {
     private var display_data:BitmapData;
     private var display_bmp:Bitmap;
     private var url:String;
-    private var stealth:int;
+    private var stealth:Boolean;
 
     public function Webcam() {
       // class constructor
@@ -61,10 +61,10 @@ package {
       // Hack to auto-select iSight camera on Mac
       // (JPEGCam Issue #5, submitted by manuel.gonzalez.noriega)
       var cameraIdx:int = -1;
-      for (var idx = 0, len = Camera.names.length; idx < len; idx++) {
-        if (Camera.names[idx] == "USB Video Class Video") {
-          cameraIdx = idx;
-          idx = len;
+      for (var i:int = 0, len:int = Camera.names.length; i < len; i++) {
+        if (Camera.names[i] == "USB Video Class Video") {
+          cameraIdx = i;
+          i = len;
         }
       }
 
@@ -131,14 +131,14 @@ package {
       }
     }
 
-    public function set_quality(new_quality:int) {
+    public function set_quality(new_quality:int):void {
       // set JPEG image quality
       if (new_quality < 0) new_quality = 0;
       if (new_quality > 100) new_quality = 100;
       jpeg_quality = new_quality;
     }
 
-    public function configure(panel:String = SecurityPanel.CAMERA) {
+    public function configure(panel:String = SecurityPanel.CAMERA):void {
       // show configure dialog inside flash movie
       Security.showSettings(panel);
     }
@@ -147,7 +147,9 @@ package {
       trace("activityHandler: " + event);
     }
 
-    public function snap(url, new_quality, shutter, new_stealth = 0) {
+    public function snap(
+      url:String, new_quality:int, shutter:Boolean, new_stealth:Boolean = false
+    ):void {
       // take snapshot from camera, and upload if URL was provided
       if (new_quality) {
         set_quality(new_quality);
@@ -164,7 +166,7 @@ package {
       }
     }
 
-    public function snap2(url) {
+    public function snap2(url:String):void {
       // take snapshot, convert to jpeg, submit to server
       capture_data.draw(video, null, null, null, null, false);
 
@@ -187,7 +189,7 @@ package {
       }
     }
 
-    public function upload(url) {
+    public function upload(url:String):void {
       if (capture_data) {
         var encoder:JPGEncoder = new JPGEncoder(jpeg_quality);
         var ba:ByteArray;
@@ -251,7 +253,7 @@ package {
 
     public function onLoaded(evt:Event):void {
       // image upload complete
-      var msg = "unknown";
+      var msg:String = "unknown";
       if (evt && evt.target && evt.target.data) {
         msg = evt.target.data;
       }
@@ -259,14 +261,14 @@ package {
     }
 
     public function statusHandler(evt:StatusEvent):void {
-      var msg = "unknown";
+      var msg:String = "unknown";
       if (evt && evt.code) {
         msg = evt.code;
       }
       ExternalInterface.call('webcam.flash_notify', "security", msg);
     }
 
-    public function reset() {
+    public function reset():void {
       if (contains(display_bmp)) {
         removeChild(display_bmp);
 
