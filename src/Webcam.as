@@ -125,7 +125,7 @@ package {
           'webcam.flash_notify', 'flashLoadComplete', !camera.muted);
       }
       else {
-        trace("You need a camera.");
+        debug("No camera was detected.");
         ExternalInterface.call(
           'webcam.flash_notify', "error", "No camera was detected.");
       }
@@ -144,7 +144,7 @@ package {
     }
 
     private function activityHandler(event:ActivityEvent):void {
-      trace("activityHandler: " + event);
+      debug("activityHandler: " + event);
     }
 
     public function snap(
@@ -155,7 +155,6 @@ package {
         set_quality(new_quality);
       }
       stealth = new_stealth;
-      trace("in snap(), drawing to bitmap");
 
       if (shutter) {
         channel = snd.play();
@@ -233,13 +232,13 @@ package {
         var loader:URLLoader = new URLLoader();
         loader.addEventListener(Event.COMPLETE, onLoaded);
 
-        trace("sending post to: " + url);
+        debug("Sending post to: " + url);
 
         try {
           loader.load(req);
         }
         catch (error:Error) {
-          trace("Unable to load requested document.");
+          debug("Unable to load requested document.");
           ExternalInterface.call(
             'webcam.flash_notify', "error", "Unable to post data: " + error);
         }
@@ -274,6 +273,11 @@ package {
 
         addChild(video);
       }
+    }
+
+    private function debug(msg:String):void {
+      trace(msg);
+      ExternalInterface.call('webcam.flash_notify', "debug", msg);
     }
   }
 }

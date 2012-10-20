@@ -32,6 +32,7 @@ window.webcam = {
 	stealth: true, // stealth mode (do not freeze image upon capture)
 	hooks: {
 		onLoad: null,
+		onDebug: null,
 		onAllow: null,
 		onComplete: null,
 		onError: null
@@ -206,6 +207,10 @@ window.webcam = {
 		//console.log(type, msg);
 		// receive notification from flash about event
 		switch (type) {
+			case 'debug':
+				this.fire_hook('onDebug', msg);
+				break;
+
 			case 'security':
 				// movie loaded successfully
 				var permission = (msg == "Camera.Unmuted");
