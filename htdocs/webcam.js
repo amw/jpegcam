@@ -34,6 +34,7 @@ window.webcam = {
 		onLoad: null,
 		onDebug: null,
 		onAllow: null,
+		onConfigClosed: null,
 		onComplete: null,
 		onError: null
 	}, // callback hook functions
@@ -221,6 +222,11 @@ window.webcam = {
 				// movie loaded successfully
 				this.loaded = true;
 				this.fire_hook('onLoad', msg);
+				break;
+
+			case 'configClosed':
+				// privacy panel closed
+				this.fire_hook('onConfigClosed', msg);
 				break;
 
 			case 'error':

@@ -141,6 +141,24 @@ package {
     public function configure(panel:String = SecurityPanel.CAMERA):void {
       // show configure dialog inside flash movie
       Security.showSettings(panel);
+
+      // When the security panel is visible the stage doesn't receive
+      // mouse events. We can wait for a mouse move event to notify javascript
+      // about the panel being closed.
+      stage.addEventListener(MouseEvent.MOUSE_MOVE, onMouseMove);
+    }
+
+    private function onMouseMove(e:MouseEvent):void {
+      // flash player sends mouseMove event with coordinates outside the stage
+      // when user moves his mouse outside the stage even when the privacy
+      // panel is displayed
+      if (e.stageX >= 0 && e.stageX < stage.stageWidth &&
+          e.stageY >= 0 && e.stageY < stage.stageHeight
+      ) {
+        stage.removeEventListener(MouseEvent.MOUSE_MOVE, onMouseMove);
+        debug("Privacy panel closed.");
+        ExternalInterface.call('webcam.flash_notify', "configClosed", true);
+      }
     }
 
     private function activityHandler(event:ActivityEvent):void {
