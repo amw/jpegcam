@@ -207,7 +207,7 @@ package {
       }
     }
 
-    public function upload(url:String):void {
+    public function upload(url:String, csrf_token:String = null):void {
       if (capture_data) {
         var encoder:JPGEncoder = new JPGEncoder(jpeg_quality);
         var ba:ByteArray;
@@ -240,9 +240,13 @@ package {
           ba = encoder.encode(server_data);
         }
 
-        var head:URLRequestHeader = new URLRequestHeader("Accept","text/*");
         var req:URLRequest = new URLRequest(url);
-        req.requestHeaders.push(head);
+        req.requestHeaders.push(new URLRequestHeader("Accept", "text/*"));
+
+        if (csrf_token && csrf_token.length) {
+          req.requestHeaders.push(
+            new URLRequestHeader("X-CSRF-Token", csrf_token));
+        }
 
         req.data = ba;
         req.method = URLRequestMethod.POST;

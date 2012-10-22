@@ -1,4 +1,4 @@
-/* JPEGCam v1.0.12 */
+/* JPEGCam v1.0.13 */
 /* Webcam library for capturing JPEG images and submitting to a server */
 /* Copyright (c) 2008 - 2009 Joseph Huckaby <jhuckaby@goldcartridge.com> */
 /* Licensed under the GNU Lesser Public License */
@@ -18,7 +18,7 @@
 
 // Everything is under a 'webcam' Namespace
 window.webcam = {
-	version: '1.0.12',
+	version: '1.0.13',
 	// globals
 	ie: !!navigator.userAgent.match(/MSIE/),
 	protocol: location.protocol.match(/https/i) ? 'https' : 'http',
@@ -26,6 +26,7 @@ window.webcam = {
 	swf_url: 'webcam.swf', // URI to webcam.swf movie (defaults to cwd)
 	shutter_url: 'shutter.mp3', // URI to shutter.mp3 sound
 	api_url: '', // URL to upload script
+	csrf_token: null, // token for X-CSRF-Token header
 	loaded: false, // true when webcam movie finishes loading
 	quality: 90, // JPEG quality (1 - 100)
 	shutter_sound: true, // shutter sound effect on/off
@@ -164,6 +165,10 @@ window.webcam = {
 		// freeze webcam image (capture but do not upload)
 		this.get_movie()._snap('', this.quality, this.shutter_sound ? 1 : 0, 0 );
 	},
+
+	set_csrf_token: function(token) {
+		this.csrf_token = token;
+	},
 	
 	upload: function(url, callback) {
 		// upload image to server after taking snapshot
@@ -176,7 +181,7 @@ window.webcam = {
 			this.set_api_url(url);
 		}
 		
-		this.get_movie()._upload( this.api_url );
+		this.get_movie()._upload(this.api_url, this.csrf_token);
 	},
 	
 	reset: function() {
