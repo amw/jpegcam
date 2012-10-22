@@ -51,20 +51,21 @@ window.webcam = {
 		this.hooks[name] = callback;
 	},
 	
-	fire_hook: function(name, value) {
+	fire_hook: function(name) {
+		args = Array.prototype.slice.call(arguments, 1);
 		// fire hook callback, passing optional value to it
 		if (this.hooks[name]) {
 			if (typeof(this.hooks[name]) === 'function') {
 				// callback is function reference, call directly
-				this.hooks[name](value);
+				this.hooks[name].apply(this, args);
 			}
 			else if (typeof(this.hooks[name]) === 'array') {
 				// callback is PHP-style object instance method
-				this.hooks[name][0][this.hooks[name][1]](value);
+				this.hooks[name][0][this.hooks[name][1]].apply(this, args);
 			}
 			else if (window[this.hooks[name]]) {
 				// callback is global function name
-				window[ this.hooks[name] ](value);
+				window[this.hooks[name]].apply(this, args);
 			}
 			return true;
 		}
