@@ -1,4 +1,4 @@
-/* JPEGCam v1.0.11 */
+/* JPEGCam v1.0.12 */
 /* Webcam library for capturing JPEG images and submitting to a server */
 /* Copyright (c) 2008 - 2009 Joseph Huckaby <jhuckaby@goldcartridge.com> */
 /* Licensed under the GNU Lesser Public License */
@@ -18,7 +18,7 @@
 
 // Everything is under a 'webcam' Namespace
 window.webcam = {
-	version: '1.0.11',
+	version: '1.0.12',
 	// globals
 	ie: !!navigator.userAgent.match(/MSIE/),
 	protocol: location.protocol.match(/https/i) ? 'https' : 'http',
@@ -35,6 +35,7 @@ window.webcam = {
 		onDebug: null,
 		onAllow: null,
 		onConfigClosed: null,
+		onUploadError: null,
 		onComplete: null,
 		onError: null
 	}, // callback hook functions
@@ -206,7 +207,6 @@ window.webcam = {
 	},
 	
 	flash_notify: function(type, msg) {
-		//console.log(type, msg);
 		// receive notification from flash about event
 		switch (type) {
 			case 'debug':
@@ -231,7 +231,6 @@ window.webcam = {
 				break;
 
 			case 'error':
-				// HTTP POST error most likely
 				if (!this.fire_hook('onError', msg)) {
 					/*
 					Debugging Off
@@ -240,9 +239,15 @@ window.webcam = {
 				}
 				break;
 
+			case 'uploadError':
+				// HTTP POST error most likely
+				this.fire_hook('onUploadError', msg);
+				break;
+
 			case 'success':
 				// upload complete, execute user callback function
 				// and pass raw API script results to function
+				// Don't include http status since it's always 200
 				this.fire_hook('onComplete', msg.toString());
 				break;
 

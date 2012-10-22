@@ -39,6 +39,7 @@ package {
     private var display_data:BitmapData;
     private var display_bmp:Bitmap;
     private var url:String;
+    private var http_status:int;
     private var stealth:Boolean;
 
     public function Webcam() {
@@ -249,6 +250,10 @@ package {
 
         var loader:URLLoader = new URLLoader();
         loader.addEventListener(Event.COMPLETE, onLoaded);
+        loader.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
+        loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+
+        http_status = 0
 
         debug("Sending post to: " + url);
 
@@ -268,19 +273,29 @@ package {
       }
     }
 
-    public function onLoaded(evt:Event):void {
+    private function httpStatusHandler(event:HTTPStatusEvent):void {
+      http_status = event.status;
+    }
+
+    public function onLoaded(event:Event):void {
       // image upload complete
       var msg:String = "unknown";
-      if (evt && evt.target && evt.target.data) {
-        msg = evt.target.data;
+      if (event && event.target && event.target.data) {
+        msg = event.target.data;
       }
+      // don't include http status since it's always 200
       ExternalInterface.call('webcam.flash_notify', "success", msg);
     }
 
-    public function statusHandler(evt:StatusEvent):void {
+    private function ioErrorHandler(event:IOErrorEvent):void {
+      ExternalInterface.call(
+        'webcam.flash_notify', "uploadError", http_status);
+    }
+
+    private function statusHandler(event:StatusEvent):void {
       var msg:String = "unknown";
-      if (evt && evt.code) {
-        msg = evt.code;
+      if (event && event.code) {
+        msg = event.code;
       }
       ExternalInterface.call('webcam.flash_notify', "security", msg);
     }
