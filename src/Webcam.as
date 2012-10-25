@@ -102,27 +102,29 @@ package {
 
       camera.addEventListener(StatusEvent.STATUS, statusHandler);
 
-      camera.setMode(
-        Math.max(video_width, server_width),
-        Math.max(video_height, server_height),
-        30);
+      // Select between two most popular camera modes.
+      // I don't know of a way to detect camera's native aspect ratio,
+      // but most cameras should support an aspect ratio of 3:2.
+      if (Math.max(video_width, server_width) <= 320 &&
+          Math.max(video_height, server_height) <= 240)
+      {
+        camera.setMode(320, 240, 30);
+      }
+      else {
+        camera.setMode(640, 480, 30);
+      }
 
       // do not detect motion (may help reduce CPU usage)
       camera.setMotionLevel(100);
 
-      video = new Video(
-        Math.max(video_width, server_width),
-        Math.max(video_height, server_height));
+      video = new Video(camera.width, camera.height);
       video.attachCamera(camera);
 
-      if ((video_width < server_width) && (video_height < server_height)) {
-        video.scaleX = video_width / server_width;
-        video.scaleY = video_height / server_height;
-      }
-
-      //flip video
-      video.scaleX *= -1;
-      video.x = video.width;
+      var matrix:Matrix = get_matrix(video_width, video_height, true);
+      video.scaleX = matrix.a;
+      video.scaleY = matrix.d;
+      video.x = matrix.tx;
+      video.y = matrix.ty;
 
       addChild(video);
 
@@ -138,9 +140,7 @@ package {
 
       jpeg_quality = 90;
 
-      capture_data = new BitmapData(
-        Math.max(video_width, server_width),
-        Math.max(video_height, server_height));
+      capture_data = new BitmapData(camera.width, camera.height);
       display_data = new BitmapData(video_width, video_height);
       display_bmp = new Bitmap(display_data);
 
@@ -201,12 +201,8 @@ package {
       capture_data.draw(video, null, null, null, null, false);
 
       if (!stealth) {
-        var matrix:Matrix = new Matrix(-1, 0, 0, 1, capture_data.width, 0);
-        if (resize_needed) {
-          matrix.scale(
-            video_width / capture_data.width,
-            video_height / capture_data.height);
-        }
+        var matrix:Matrix;
+        matrix = get_matrix(video_width, video_height, true);
         display_data.draw(capture_data, matrix, null, null, null, true);
 
         addChild(display_bmp);
@@ -220,36 +216,17 @@ package {
 
     public function upload(url:String, csrf_token:String = null):void {
       if (capture_data) {
+        var matrix:Matrix;
+        matrix = get_matrix(server_width, server_height, server_flip);
+
+        var server_data:BitmapData;
+        server_data = new BitmapData(server_width, server_height);
+        server_data.draw(capture_data, matrix, null, null, null, true);
+
         var encoder:JPGEncoder = new JPGEncoder(jpeg_quality);
+
         var ba:ByteArray;
-
-        if (!resize_needed) {
-          if (server_flip) {
-            ba = encoder.encode(display_data);
-          }
-          else {
-            ba = encoder.encode(capture_data);
-          }
-        }
-        else {
-          var matrix:Matrix = new Matrix();
-
-          if (server_flip) {
-            matrix.scale(-1, 1);
-            matrix.translate(server_width, 0);
-          }
-          if (resize_needed) {
-            matrix.scale(
-              server_width / capture_data.width,
-              server_height / capture_data.height);
-          }
-
-          var server_data:BitmapData;
-          server_data = new BitmapData(server_width, server_height);
-          server_data.draw(capture_data, matrix, null, null, null, true);
-
-          ba = encoder.encode(server_data);
-        }
+        ba = encoder.encode(server_data);
 
         var req:URLRequest = new URLRequest(url);
         req.requestHeaders.push(new URLRequestHeader("Accept", "text/*"));
@@ -315,6 +292,31 @@ package {
       if (contains(display_bmp)) {
         removeChild(display_bmp);
       }
+    }
+
+    private function get_matrix(to_x:Number, to_y:Number, flip:Boolean):Matrix {
+      var flip_scale:Number = flip ? -1 : 1;
+      var matrix:Matrix;
+      matrix = new Matrix(flip_scale, 0, 0, 1, 0, 0);
+
+      var scale:Number = Math.max(to_x / camera.width, to_y / camera.height);
+      matrix.scale(scale, scale);
+
+      var x_offset:Number = flip ? to_x : 0;
+      var y_offset:Number;
+      var scaled_width:Number = scale * camera.width;
+      var scaled_height:Number = scale * camera.height;
+
+      if (scaled_width > to_x) {
+        x_offset += -flip_scale * Math.floor((scaled_width - to_x) / 2);
+      }
+      else if (scaled_height > to_y) {
+        y_offset = -Math.floor((scaled_height - to_y) / 2);
+      }
+
+      matrix.translate(x_offset, y_offset);
+
+      return matrix;
     }
 
     private function debug(msg:String):void {
