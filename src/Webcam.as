@@ -10,6 +10,9 @@ package {
   import flash.display.StageScaleMode;
   import flash.display.Bitmap;
   import flash.display.BitmapData;
+  import flash.text.TextField;
+  import flash.text.TextFormat;
+  import flash.text.TextFieldAutoSize;
   import flash.events.*;
   import flash.utils.*;
   import flash.media.Camera;
@@ -41,6 +44,7 @@ package {
     private var url:String;
     private var http_status:int;
     private var stealth:Boolean;
+    private var intro:TextField;
 
     public function Webcam() {
       // class constructor
@@ -58,6 +62,19 @@ package {
       stage.align = StageAlign.TOP_LEFT;
       stage.stageWidth = video_width;
       stage.stageHeight = video_height;
+
+      var format:TextFormat = new TextFormat()
+      format.size = 22;
+      format.font = "_sans";
+
+      intro = new TextField();
+      intro.text = "Waiting for camera...";
+      intro.setTextFormat(format);
+      intro.width = intro.textWidth + 20;
+      intro.height = intro.textHeight + 20;
+      intro.x = Math.floor((stage.stageWidth - intro.textWidth) / 2);
+      intro.y = Math.floor((stage.stageHeight - intro.textHeight) / 2);
+      addChild(intro);
 
       // Hack to auto-select iSight camera on Mac
       // (JPEGCam Issue #5, submitted by manuel.gonzalez.noriega)
@@ -78,11 +95,19 @@ package {
 
       if (camera != null) {
         camera.addEventListener(StatusEvent.STATUS, statusHandler);
+
+        camera.setMode(
+          Math.max(video_width, server_width),
+          Math.max(video_height, server_height),
+          30);
+
+        // do not detect motion (may help reduce CPU usage)
+        camera.setMotionLevel(100);
+
         video = new Video(
           Math.max(video_width, server_width),
           Math.max(video_height, server_height));
         video.attachCamera(camera);
-        addChild(video);
 
         if ((video_width < server_width) && (video_height < server_height)) {
           video.scaleX = video_width / server_width;
@@ -93,13 +118,7 @@ package {
         video.scaleX *= -1;
         video.x = video.width;
 
-        camera.setMode(
-          Math.max(video_width, server_width),
-          Math.max(video_height, server_height),
-          30);
-
-        // do not detect motion (may help reduce CPU usage)
-        camera.setMotionLevel(100);
+        addChild(video);
 
         ExternalInterface.addCallback('_snap', snap);
         ExternalInterface.addCallback('_configure', configure);
