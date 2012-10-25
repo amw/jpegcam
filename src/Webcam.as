@@ -77,7 +77,6 @@ package {
       }
 
       if (camera != null) {
-        camera.addEventListener(ActivityEvent.ACTIVITY, activityHandler);
         camera.addEventListener(StatusEvent.STATUS, statusHandler);
         video = new Video(
           Math.max(video_width, server_width),
@@ -160,10 +159,6 @@ package {
         debug("Privacy panel closed.");
         ExternalInterface.call('webcam.flash_notify', "configClosed", true);
       }
-    }
-
-    private function activityHandler(event:ActivityEvent):void {
-      debug("activityHandler: " + event);
     }
 
     public function snap(
