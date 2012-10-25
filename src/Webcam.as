@@ -93,8 +93,6 @@ package {
         video.scaleX *= -1;
         video.x = video.width;
 
-        camera.setQuality(0, 100);
-        camera.setKeyFrameInterval(10);
         camera.setMode(
           Math.max(video_width, server_width),
           Math.max(video_height, server_height),
