@@ -93,59 +93,59 @@ package {
         camera = Camera.getCamera();
       }
 
-      if (camera != null) {
-        camera.addEventListener(StatusEvent.STATUS, statusHandler);
-
-        camera.setMode(
-          Math.max(video_width, server_width),
-          Math.max(video_height, server_height),
-          30);
-
-        // do not detect motion (may help reduce CPU usage)
-        camera.setMotionLevel(100);
-
-        video = new Video(
-          Math.max(video_width, server_width),
-          Math.max(video_height, server_height));
-        video.attachCamera(camera);
-
-        if ((video_width < server_width) && (video_height < server_height)) {
-          video.scaleX = video_width / server_width;
-          video.scaleY = video_height / server_height;
-        }
-
-        //flip video
-        video.scaleX *= -1;
-        video.x = video.width;
-
-        addChild(video);
-
-        ExternalInterface.addCallback('_snap', snap);
-        ExternalInterface.addCallback('_configure', configure);
-        ExternalInterface.addCallback('_upload', upload);
-        ExternalInterface.addCallback('_reset', reset);
-
-        if (flashvars.shutter_enabled == 1) {
-          snd = new Sound();
-          snd.load(new URLRequest(flashvars.shutter_url));
-        }
-
-        jpeg_quality = 90;
-
-        capture_data = new BitmapData(
-          Math.max(video_width, server_width),
-          Math.max(video_height, server_height));
-        display_data = new BitmapData(video_width, video_height);
-        display_bmp = new Bitmap(display_data);
-
-        ExternalInterface.call(
-          'webcam.flash_notify', 'flashLoadComplete', !camera.muted);
-      }
-      else {
+      if (!camera) {
         debug("No camera was detected.");
         ExternalInterface.call(
           'webcam.flash_notify', "error", "No camera was detected.");
+        return;
       }
+
+      camera.addEventListener(StatusEvent.STATUS, statusHandler);
+
+      camera.setMode(
+        Math.max(video_width, server_width),
+        Math.max(video_height, server_height),
+        30);
+
+      // do not detect motion (may help reduce CPU usage)
+      camera.setMotionLevel(100);
+
+      video = new Video(
+        Math.max(video_width, server_width),
+        Math.max(video_height, server_height));
+      video.attachCamera(camera);
+
+      if ((video_width < server_width) && (video_height < server_height)) {
+        video.scaleX = video_width / server_width;
+        video.scaleY = video_height / server_height;
+      }
+
+      //flip video
+      video.scaleX *= -1;
+      video.x = video.width;
+
+      addChild(video);
+
+      ExternalInterface.addCallback('_snap', snap);
+      ExternalInterface.addCallback('_configure', configure);
+      ExternalInterface.addCallback('_upload', upload);
+      ExternalInterface.addCallback('_reset', reset);
+
+      if (flashvars.shutter_enabled == 1) {
+        snd = new Sound();
+        snd.load(new URLRequest(flashvars.shutter_url));
+      }
+
+      jpeg_quality = 90;
+
+      capture_data = new BitmapData(
+        Math.max(video_width, server_width),
+        Math.max(video_height, server_height));
+      display_data = new BitmapData(video_width, video_height);
+      display_bmp = new Bitmap(display_data);
+
+      ExternalInterface.call(
+        'webcam.flash_notify', 'flashLoadComplete', !camera.muted);
     }
 
     public function set_quality(new_quality:int):void {
@@ -210,7 +210,6 @@ package {
         display_data.draw(capture_data, matrix, null, null, null, true);
 
         addChild(display_bmp);
-        removeChild(video);
       }
 
       // if URL was provided, upload now
@@ -309,18 +308,12 @@ package {
     }
 
     private function statusHandler(event:StatusEvent):void {
-      var msg:String = "unknown";
-      if (event && event.code) {
-        msg = event.code;
-      }
-      ExternalInterface.call('webcam.flash_notify', "security", msg);
+      ExternalInterface.call('webcam.flash_notify', "security", event.code);
     }
 
     public function reset():void {
       if (contains(display_bmp)) {
         removeChild(display_bmp);
-
-        addChild(video);
       }
     }
 
