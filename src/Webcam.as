@@ -21,6 +21,7 @@ package {
   import flash.net.*;
   import flash.system.Security;
   import flash.system.SecurityPanel;
+  import flash.system.Capabilities;
   import flash.media.Sound;
   import flash.media.SoundChannel;
   import flash.geom.Matrix;
@@ -47,6 +48,8 @@ package {
     private var intro:TextField;
 
     public function Webcam() {
+      debug("Flash version: " + Capabilities.version);
+      debug("OS: " + Capabilities.os);
       // class constructor
       flash.system.Security.allowDomain("*");
       var flashvars:Object = LoaderInfo(this.root.loaderInfo).parameters;
