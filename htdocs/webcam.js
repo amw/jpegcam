@@ -158,7 +158,11 @@ window.webcam = {
 			this.set_stealth( stealth );
 		}
 		
-		this.get_movie()._snap( this.api_url, this.quality, this.shutter_sound ? 1 : 0, this.stealth ? 1 : 0 );
+		this.get_movie()._snap(
+			this.api_url, this.quality,
+			this.shutter_sound ? 1 : 0,
+			this.stealth ? 1 : 0,
+			this.csrf_token);
 	},
 	
 	freeze: function() {

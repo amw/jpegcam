@@ -182,7 +182,8 @@ package {
     }
 
     public function snap(
-      url:String, new_quality:int, shutter:Boolean, new_stealth:Boolean = false
+      url:String, new_quality:int, shutter:Boolean, new_stealth:Boolean = false,
+      csrf_token:String = null
     ):void {
       // take snapshot from camera, and upload if URL was provided
       if (new_quality) {
@@ -192,14 +193,14 @@ package {
 
       if (shutter) {
         channel = snd.play();
-        setTimeout(snap2, 10, url);
+        setTimeout(snap2, 10, url, csrf_token);
       }
       else {
-        snap2(url);
+        snap2(url, csrf_token);
       }
     }
 
-    public function snap2(url:String):void {
+    public function snap2(url:String, csrf_token:String = null):void {
       // take snapshot, convert to jpeg, submit to server
       capture_data.draw(video, null, null, null, null, false);
 
@@ -213,7 +214,7 @@ package {
 
       // if URL was provided, upload now
       if (url) {
-        upload(url);
+        upload(url, csrf_token);
       }
     }
 
