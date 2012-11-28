@@ -42,7 +42,6 @@ package {
     private var capture_data:BitmapData;
     private var display_data:BitmapData;
     private var display_bmp:Bitmap;
-    private var url:String;
     private var http_status:int;
     private var stealth:Boolean;
     private var intro:TextField;
@@ -240,6 +239,8 @@ package {
             new URLRequestHeader("X-CSRF-Token", csrf_token));
         }
 
+        debug("Will try to send jpeg that has " + ba.length + " bytes");
+
         req.data = ba;
         req.method = URLRequestMethod.POST;
         req.contentType = "image/jpeg";
@@ -249,7 +250,7 @@ package {
         loader.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
         loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
 
-        http_status = 0
+        http_status = -1
 
         debug("Sending post to: " + url);
 
@@ -284,6 +285,7 @@ package {
     }
 
     private function ioErrorHandler(event:IOErrorEvent):void {
+      debug(event.toString());
       ExternalInterface.call(
         'webcam.flash_notify', "uploadError", http_status);
     }
