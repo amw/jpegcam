@@ -96,7 +96,6 @@ package {
       }
 
       if (!camera) {
-        debug("No camera was detected.");
         ExternalInterface.call(
           'webcam.flash_notify', "error", "No camera was detected.");
         return;
