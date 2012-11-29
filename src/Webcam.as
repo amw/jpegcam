@@ -84,7 +84,7 @@ package {
       for (var i:int = 0, len:int = Camera.names.length; i < len; i++) {
         if (Camera.names[i] == "USB Video Class Video") {
           cameraIdx = i;
-          i = len;
+          break;
         }
       }
 
