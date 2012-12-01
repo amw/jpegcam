@@ -238,22 +238,25 @@ package {
             new URLRequestHeader("X-CSRF-Token", csrf_token));
         }
 
-        debug("Will try to send jpeg that has " + ba.length + " bytes");
-
         req.data = ba;
-        req.method = URLRequestMethod.POST;
         req.contentType = "image/jpeg";
+        req.method = URLRequestMethod.POST;
 
         var loader:URLLoader = new URLLoader();
         loader.addEventListener(Event.COMPLETE, onLoaded);
+        loader.addEventListener(Event.OPEN, onOpen);
         loader.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
         loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+        loader.addEventListener(IOErrorEvent.NETWORK_ERROR, networkError);
+        loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR,
+          securityError);
 
         http_status = -1
 
         debug("Sending post to: " + url);
 
         try {
+          debug("Will try to send jpeg that has " + ba.length + " bytes");
           loader.load(req);
         }
         catch (error:Error) {
@@ -269,10 +272,6 @@ package {
       }
     }
 
-    private function httpStatusHandler(event:HTTPStatusEvent):void {
-      http_status = event.status;
-    }
-
     public function onLoaded(event:Event):void {
       // image upload complete
       var msg:String = "unknown";
@@ -283,10 +282,27 @@ package {
       ExternalInterface.call('webcam.flash_notify', "success", msg);
     }
 
+    private function onOpen(event:Event):void {
+      debug("Connection initiated");
+    }
+
+    private function httpStatusHandler(event:HTTPStatusEvent):void {
+      debug("HTTP status: " + event);
+      http_status = event.status;
+    }
+
     private function ioErrorHandler(event:IOErrorEvent):void {
-      debug(event.toString());
+      debug("IO error: " + event);
       ExternalInterface.call(
         'webcam.flash_notify', "uploadError", http_status);
+    }
+
+    private function networkError(event:IOErrorEvent):void {
+      debug("Network error " + event);
+    }
+
+    private function securityError(event:SecurityErrorEvent):void {
+      debug(event.toString());
     }
 
     private function statusHandler(event:StatusEvent):void {
