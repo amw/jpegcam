@@ -42,7 +42,6 @@ package {
     private var capture_data:BitmapData;
     private var display_data:BitmapData;
     private var display_bmp:Bitmap;
-    private var http_status:int;
     private var stealth:Boolean;
     private var intro:TextField;
 
@@ -217,102 +216,43 @@ package {
     }
 
     public function upload(url:String, csrf_token:String = null):void {
-      if (capture_data) {
-        var matrix:Matrix;
-        matrix = get_matrix(server_width, server_height, server_flip);
-
-        var server_data:BitmapData;
-        server_data = new BitmapData(server_width, server_height);
-        server_data.draw(capture_data, matrix, null, null, null, true);
-
-        var encoder:JPGEncoder = new JPGEncoder(jpeg_quality);
-
-        var ba:ByteArray;
-        ba = encoder.encode(server_data);
-
-        var req:URLRequest = new URLRequest(url);
-        req.requestHeaders.push(new URLRequestHeader("Accept", "text/*"));
-
-        if (csrf_token && csrf_token.length) {
-          req.requestHeaders.push(
-            new URLRequestHeader("X-CSRF-Token", csrf_token));
-        }
-
-        req.data = ba;
-        req.contentType = "image/jpeg";
-        req.method = URLRequestMethod.POST;
-
-        var loader:URLLoader = new URLLoader();
-        loader.addEventListener(Event.COMPLETE, onLoaded);
-        loader.addEventListener(Event.OPEN, onOpen);
-        loader.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
-        loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
-        loader.addEventListener(IOErrorEvent.NETWORK_ERROR, networkError);
-        loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR,
-          securityError);
-
-        http_status = -1
-
-        debug("Sending post to: " + url);
-
-        try {
-          debug("Will try to send jpeg that has " + ba.length + " bytes");
-          loader.load(req);
-        }
-        catch (error:Error) {
-          debug("Unable to load requested document.");
-          ExternalInterface.call(
-            'webcam.flash_notify', "error", "Unable to post data: " + error);
-        }
-      }
-      else {
+      if (!capture_data) {
         ExternalInterface.call(
           'webcam.flash_notify', "error",
           "Nothing to upload, must capture an image first.");
+        return;
       }
-    }
 
-    public function onLoaded(event:Event):void {
-      // image upload complete
-      var msg:String = "unknown";
-      if (event && event.target && event.target.data) {
-        msg = event.target.data;
-      }
-      // don't include http status since it's always 200
-      ExternalInterface.call('webcam.flash_notify', "success", msg);
-    }
+      var matrix:Matrix;
+      matrix = get_matrix(server_width, server_height, server_flip);
 
-    private function onOpen(event:Event):void {
-      debug("Connection initiated");
-    }
+      var server_data:BitmapData;
+      server_data = new BitmapData(server_width, server_height);
+      server_data.draw(capture_data, matrix, null, null, null, true);
 
-    private function httpStatusHandler(event:HTTPStatusEvent):void {
-      debug("HTTP status: " + event);
-      http_status = event.status;
-    }
+      var encoder:JPGEncoder = new JPGEncoder(jpeg_quality);
 
-    private function ioErrorHandler(event:IOErrorEvent):void {
-      debug("IO error: " + event);
-      ExternalInterface.call(
-        'webcam.flash_notify', "uploadError", http_status);
-    }
+      var ba:ByteArray;
+      ba = encoder.encode(server_data);
 
-    private function networkError(event:IOErrorEvent):void {
-      debug("Network error " + event);
-    }
-
-    private function securityError(event:SecurityErrorEvent):void {
-      debug(event.toString());
-    }
-
-    private function statusHandler(event:StatusEvent):void {
-      ExternalInterface.call('webcam.flash_notify', "security", event.code);
+      var upload:Upload = new Upload(url, ba, csrf_token);
+      upload.jpeg_camera = this;
+      upload.start();
     }
 
     public function reset():void {
       if (contains(display_bmp)) {
         removeChild(display_bmp);
       }
+    }
+
+    public function debug(msg:String):void {
+      trace(msg);
+      ExternalInterface.call('webcam.flash_notify', "debug", msg);
+    }
+
+    private function statusHandler(event:StatusEvent):void {
+      ExternalInterface.call('webcam.flash_notify', "security", event.code);
     }
 
     private function get_matrix(to_x:Number, to_y:Number, flip:Boolean):Matrix {
@@ -339,10 +279,143 @@ package {
 
       return matrix;
     }
+  }
+}
 
-    private function debug(msg:String):void {
-      trace(msg);
-      ExternalInterface.call('webcam.flash_notify', "debug", msg);
+// Imports for the helper classes
+import flash.net.*;
+import flash.events.*;
+import flash.utils.*;
+import flash.external.ExternalInterface;
+
+class Upload {
+  private static const ATTEMPT_HEADER:String = "X-JPEGCAM-ATTEMPT";
+
+  public var jpeg_camera:Webcam;
+
+  private var request:URLRequest;
+  private var loader:URLLoader;
+
+  private var retries:int;
+  private var delay:int;
+
+  private var attempt:int;
+  private var http_status:int;
+  private var timer:Timer;
+
+  public function Upload(
+    url:String, data:ByteArray,
+    csrf_token:String = null, retries:int = 3, delay:int = 500
+  ) {
+    this.retries = retries;
+    this.delay = delay;
+
+    request = new URLRequest(url);
+    request.requestHeaders.push(new URLRequestHeader("Accept", "text/*"));
+
+    if (csrf_token && csrf_token.length) {
+      request.requestHeaders.push(
+        new URLRequestHeader("X-CSRF-Token", csrf_token));
+    }
+
+    request.data = data;
+    request.contentType = "image/jpeg";
+    request.method = URLRequestMethod.POST;
+
+    loader = new URLLoader();
+    loader.addEventListener(Event.COMPLETE, onComplete);
+    loader.addEventListener(Event.OPEN, onOpen);
+    loader.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
+    loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+    loader.addEventListener(IOErrorEvent.NETWORK_ERROR, networkError);
+    loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR,
+      securityError);
+
+    timer = new Timer(delay, 1);
+    timer.addEventListener(TimerEvent.TIMER, sendRequest);
+  }
+
+  public function start():void {
+    setAttempt(1);
+    sendRequest();
+  }
+
+  private function onComplete(event:Event):void {
+    var msg:String = "unknown";
+    if (event && event.target && event.target.data) {
+      msg = event.target.data;
+    }
+    ExternalInterface.call('webcam.flash_notify', "success", msg);
+  }
+
+  private function onOpen(event:Event):void {
+    debug("Connection initiated");
+  }
+
+  private function httpStatusHandler(event:HTTPStatusEvent):void {
+    debug("HTTP status: " + event);
+    http_status = event.status;
+  }
+
+  private function ioErrorHandler(event:IOErrorEvent):void {
+    debug("IO error: " + event);
+
+    if (attempt < retries) {
+      setAttempt(attempt + 1);
+      timer.start();
+    }
+    else {
+      ExternalInterface.call(
+        'webcam.flash_notify', "uploadError", http_status);
+    }
+  }
+
+  private function networkError(event:IOErrorEvent):void {
+    debug("Network error " + event);
+  }
+
+  private function securityError(event:SecurityErrorEvent):void {
+    debug(event.toString());
+  }
+
+  private function sendRequest(event:Event = null):void {
+    http_status = -1;
+
+    debug("Attempt #" + attempt + " of sending " + request.data.length +
+      " bytes jpeg to " + request.url);
+
+    try {
+      loader.load(request);
+    }
+    catch (error:Error) {
+      ExternalInterface.call(
+        'webcam.flash_notify', "error", "Unable to post data: " + error);
+    }
+  }
+
+  private function setAttempt(attempt:int):void {
+    this.attempt = attempt;
+    // each retry is made after 3 times longer delay than the last one
+    // first try is fired immediately, second after 500, third after 1500,
+    // fourth after 4500 milliseconds
+    timer.reset();
+    if (attempt > 1) {
+      timer.delay = delay * Math.pow(3, attempt - 2);
+    }
+
+    for (var i:int = 0; i < request.requestHeaders.length; ++i) {
+      if (ATTEMPT_HEADER == request.requestHeaders[i].name) {
+        request.requestHeaders[i].value = attempt.toString();
+        return;
+      }
+    }
+    request.requestHeaders.push(
+      new URLRequestHeader(ATTEMPT_HEADER, attempt.toString()));
+  }
+
+  private function debug(msg:String):void {
+    if (jpeg_camera) {
+      jpeg_camera.debug(msg);
     }
   }
 }
